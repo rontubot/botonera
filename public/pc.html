@@ -157,16 +157,37 @@
         </div>
 
         <div class="form-group">
-          <label>Ícono / Emoji:</label>
-          <div id="iconPicker" class="icon-options">
-            <button type="button" class="icon-btn selected" data-icon="🎵">🎵</button>
-            <button type="button" class="icon-btn" data-icon="💥">💥</button>
-            <button type="button" class="icon-btn" data-icon="🚨">🚨</button>
-            <button type="button" class="icon-btn" data-icon="🤣">🤣</button>
-            <button type="button" class="icon-btn" data-icon="🎉">🎉</button>
-            <button type="button" class="icon-btn" data-icon="🔥">🔥</button>
-            <button type="button" class="icon-btn" data-icon="🍻">🍻</button>
-            <button type="button" class="icon-btn" data-icon="🔔">🔔</button>
+          <div class="emoji-picker-header">
+            <label>Ícono / Emoticón del botón:</label>
+            <div class="selected-emoji-badge">
+              <span>Seleccionado:</span>
+              <strong id="selectedEmojiPreview">🎵</strong>
+            </div>
+          </div>
+
+          <!-- Buscador de Emoticones -->
+          <div class="emoji-search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="emojiSearchInput" placeholder="Buscar emoticón (ej: golpe, risa, fuego, trompeta, victoria, meme...)" autocomplete="off">
+            <button type="button" id="btnClearEmojiSearch" class="btn-clear-search">&times;</button>
+          </div>
+
+          <!-- Pestañas de Categorías -->
+          <div id="emojiCategoryTabs" class="emoji-categories">
+            <button type="button" class="category-chip active" data-cat="all">🌟 Todos</button>
+            <button type="button" class="category-chip" data-cat="action">💥 Golpes & Acción</button>
+            <button type="button" class="category-chip" data-cat="fun">🤣 Risas & Memes</button>
+            <button type="button" class="category-chip" data-cat="sound">📢 Alertas & Sonidos</button>
+            <button type="button" class="category-chip" data-cat="gaming">🏆 Juegos & Victoria</button>
+            <button type="button" class="category-chip" data-cat="party">🍻 Fiesta & Brindis</button>
+            <button type="button" class="category-chip" data-cat="animals">🐾 Animales & Naturaleza</button>
+            <button type="button" class="category-chip" data-cat="vehicles">🚗 Vehículos</button>
+            <button type="button" class="category-chip" data-cat="other">🎭 Varios</button>
+          </div>
+
+          <!-- Cuadrícula con scroll de emoticones -->
+          <div id="emojiGrid" class="emoji-grid">
+            <!-- Renderizado dinámicamente -->
           </div>
         </div>
 
