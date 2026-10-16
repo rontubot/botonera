@@ -124,15 +124,17 @@
 
   </div>
 
-  <!-- Modal para Agregar Nuevo Sonido -->
+  <!-- Modal para Agregar o Editar Sonido -->
   <div id="addModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>➕ Agregar Botón de Sonido</h3>
+        <h3 id="modalTitle">➕ Agregar Botón de Sonido</h3>
         <button id="btnCloseModal" class="btn-close-modal">&times;</button>
       </div>
 
       <form id="addSoundForm">
+        <input type="hidden" id="editButtonId" value="">
+
         <div class="form-group">
           <label for="soundName">Nombre del botón:</label>
           <input type="text" id="soundName" placeholder="Ej: Grito Wilhelm, Risas, etc." required>
@@ -140,7 +142,8 @@
 
         <div class="form-group">
           <label for="soundFile">Archivo de audio (MP3, WAV, OGG):</label>
-          <input type="file" id="soundFile" accept="audio/*" required>
+          <input type="file" id="soundFile" accept="audio/*">
+          <span id="currentAudioHint" class="current-audio-hint" style="display:none;"></span>
         </div>
 
         <div class="form-group">

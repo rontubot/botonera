@@ -31,12 +31,17 @@ const btnResetBuzzer = document.getElementById('btnResetBuzzer');
 
 // Modal Elements
 const addModal = document.getElementById('addModal');
+const modalTitle = document.getElementById('modalTitle');
+const editButtonId = document.getElementById('editButtonId');
+const soundNameInput = document.getElementById('soundName');
+const soundFileInput = document.getElementById('soundFile');
+const currentAudioHint = document.getElementById('currentAudioHint');
+const btnSubmitAdd = document.getElementById('btnSubmitAdd');
 const btnOpenAddModal = document.getElementById('btnOpenAddModal');
 const btnCloseModal = document.getElementById('btnCloseModal');
 const btnCancelAdd = document.getElementById('btnCancelAdd');
 const addSoundForm = document.getElementById('addSoundForm');
 const colorPicker = document.getElementById('colorPicker');
-const iconPicker = document.getElementById('iconPicker');
 
 let selectedColor = '#3b82f6';
 let selectedIcon = '🎵';
@@ -177,18 +182,28 @@ function renderButtons() {
     card.style.borderColor = `${btn.color}60`;
 
     card.innerHTML = `
-      <button class="btn-delete" title="Eliminar botón" data-id="${btn.id}">&times;</button>
+      <div class="card-actions">
+        <button class="btn-card-action btn-edit" title="Editar botón (emoticón, nombre, audio)" data-id="${btn.id}">✏️</button>
+        <button class="btn-card-action btn-delete" title="Eliminar botón" data-id="${btn.id}">&times;</button>
+      </div>
       <div class="btn-icon">${btn.icon || '🎵'}</div>
-      <div class="btn-name">${btn.name}</div>
+      <div class="btn-name">${escapeHtml(btn.name)}</div>
     `;
 
     // Click para reproducir sonido desde la PC directamente
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-delete')) return;
+      if (e.target.closest('.card-actions')) return;
       playSound(btn, { name: 'PC Base (Local)' });
     });
 
-    // Eliminar botón
+    // Botón Editar
+    const editBtn = card.querySelector('.btn-edit');
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(btn);
+    });
+
+    // Botón Eliminar
     const delBtn = card.querySelector('.btn-delete');
     delBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -360,8 +375,52 @@ function updateBuzzerUI(state) {
   }
 }
 
-// Modal Agregar Sonido
-btnOpenAddModal.addEventListener('click', () => addModal.classList.add('open'));
+// Modal Agregar / Editar Sonido
+function openCreateModal() {
+  editButtonId.value = '';
+  modalTitle.textContent = '➕ Agregar Botón de Sonido';
+  btnSubmitAdd.textContent = 'Guardar Botón';
+  soundNameInput.value = '';
+  soundFileInput.value = '';
+  soundFileInput.required = true;
+  currentAudioHint.style.display = 'none';
+
+  selectedColor = '#3b82f6';
+  colorPicker.querySelectorAll('.color-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.color === selectedColor);
+  });
+
+  selectedIcon = '🎵';
+  if (selectedEmojiPreview) selectedEmojiPreview.textContent = selectedIcon;
+  renderEmojiPicker();
+
+  addModal.classList.add('open');
+}
+
+function openEditModal(btn) {
+  editButtonId.value = btn.id;
+  modalTitle.textContent = '✏️ Editar Botón de Sonido';
+  btnSubmitAdd.textContent = 'Actualizar Cambios';
+  soundNameInput.value = btn.name;
+  soundFileInput.value = '';
+  soundFileInput.required = false; // Opcional al editar
+
+  currentAudioHint.textContent = `🎵 Audio actual: "${btn.sound}" (sube uno nuevo solo si quieres cambiarlo)`;
+  currentAudioHint.style.display = 'block';
+
+  selectedColor = btn.color || '#3b82f6';
+  colorPicker.querySelectorAll('.color-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.color === selectedColor);
+  });
+
+  selectedIcon = btn.icon || '🎵';
+  if (selectedEmojiPreview) selectedEmojiPreview.textContent = selectedIcon;
+  renderEmojiPicker();
+
+  addModal.classList.add('open');
+}
+
+btnOpenAddModal.addEventListener('click', openCreateModal);
 btnCloseModal.addEventListener('click', () => addModal.classList.remove('open'));
 btnCancelAdd.addEventListener('click', () => addModal.classList.remove('open'));
 
@@ -608,37 +667,44 @@ if (emojiCategoryTabs) {
 // Inicializar selector de emojis
 renderEmojiPicker();
 
-// Enviar formulario de nuevo sonido
+// Enviar formulario de nuevo o editar sonido
 addSoundForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('soundName').value.trim();
-  const fileInput = document.getElementById('soundFile');
+  const name = soundNameInput.value.trim();
+  const isEditing = Boolean(editButtonId.value);
+  const editId = editButtonId.value;
 
-  if (!fileInput.files || fileInput.files.length === 0) {
+  if (!isEditing && (!soundFileInput.files || soundFileInput.files.length === 0)) {
     alert('Por favor selecciona un archivo de audio');
     return;
   }
 
   const formData = new FormData();
   formData.append('name', name);
-  formData.append('audio', fileInput.files[0]);
+  if (soundFileInput.files && soundFileInput.files.length > 0) {
+    formData.append('audio', soundFileInput.files[0]);
+  }
   formData.append('color', selectedColor);
   formData.append('icon', selectedIcon);
 
   try {
-    const res = await fetch('/api/buttons', {
-      method: 'POST',
+    const url = isEditing ? `/api/buttons/${editId}` : '/api/buttons';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
       body: formData
     });
     const data = await res.json();
     if (data.success) {
       addModal.classList.remove('open');
       addSoundForm.reset();
+      editButtonId.value = '';
     } else {
       alert('Error: ' + (data.error || 'No se pudo guardar el botón'));
     }
   } catch (err) {
-    console.error('Error al subir sonido:', err);
+    console.error('Error al guardar sonido:', err);
     alert('Error al comunicarse con el servidor');
   }
 });

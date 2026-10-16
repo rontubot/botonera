@@ -229,6 +229,48 @@ app.post('/api/buttons', upload.single('audio'), (req, res) => {
   }
 });
 
+// Editar botón existente (nombre, color, emoticón o archivo de audio)
+app.put('/api/buttons/:id', upload.single('audio'), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, color, icon } = req.body;
+    const btn = buttons.find(b => b.id === id);
+
+    if (!btn) {
+      return res.status(404).json({ error: 'Botón no encontrado' });
+    }
+
+    if (name && name.trim()) btn.name = name.trim();
+    if (color) btn.color = color;
+    if (icon) btn.icon = icon;
+
+    // Si se subió un nuevo archivo de audio
+    if (req.file) {
+      const oldSound = btn.sound;
+      btn.sound = req.file.filename;
+
+      // Si el archivo anterior ya no se usa en ningún otro botón, eliminarlo
+      if (oldSound && oldSound !== btn.sound) {
+        const stillUsed = buttons.some(b => b.sound === oldSound && b.id !== id);
+        if (!stillUsed) {
+          const oldPath = path.join(SOUNDS_DIR, oldSound);
+          if (fs.existsSync(oldPath)) {
+            fs.unlink(oldPath, () => {});
+          }
+        }
+      }
+    }
+
+    saveButtons(buttons);
+    io.emit('buttons_updated', buttons);
+
+    res.json({ success: true, button: btn });
+  } catch (err) {
+    console.error('Error al actualizar botón:', err);
+    res.status(500).json({ error: 'Error al actualizar el botón' });
+  }
+});
+
 // Eliminar un botón de forma definitiva
 app.delete('/api/buttons/:id', (req, res) => {
   const { id } = req.params;
