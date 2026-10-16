@@ -72,19 +72,55 @@ document.body.addEventListener('click', () => {
 // Cargar información de red y QR
 async function loadServerInfo() {
   try {
-    const res = await fetch('/api/server-info');
+    const isCustomDomain = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const currentHost = window.location.host;
+    const res = await fetch(`/api/server-info?host=${encodeURIComponent(currentHost)}`);
     const data = await res.json();
 
-    qrImage.src = data.qrDataUrl;
-    remoteUrlText.textContent = data.remoteUrl;
+    let targetRemoteUrl = data.remoteUrl;
+    
+    // Si la PC está corriendo en un dominio en la nube (como botonera.up.railway.app),
+    // la URL para los teléfonos SIEMPRE es el origen actual del navegador
+    if (isCustomDomain) {
+      targetRemoteUrl = `${window.location.origin}/remote`;
+    }
 
-    // Llenar selector de IPs
+    remoteUrlText.textContent = targetRemoteUrl;
+
+    // Si la URL objetivo no coincide con el QR que mandó el servidor, pedimos el QR exacto
+    if (data.remoteUrl !== targetRemoteUrl) {
+      try {
+        const qrRes = await fetch(`/api/qr?url=${encodeURIComponent(targetRemoteUrl)}`);
+        const qrData = await qrRes.json();
+        qrImage.src = qrData.qrDataUrl;
+      } catch (e) {
+        qrImage.src = data.qrDataUrl;
+      }
+    } else {
+      qrImage.src = data.qrDataUrl;
+    }
+
+    // Llenar selector de IPs y dominios
     ipSelector.innerHTML = '';
-    data.ips.forEach((item, index) => {
+
+    if (isCustomDomain) {
+      const publicOpt = document.createElement('option');
+      publicOpt.value = targetRemoteUrl;
+      publicOpt.textContent = `🌐 Dominio Público: ${window.location.host}`;
+      publicOpt.selected = true;
+      ipSelector.appendChild(publicOpt);
+    }
+
+    // Mostrar interfaces de red locales solo si no son IPs privadas de Docker o si es localhost
+    data.ips.forEach((item) => {
+      // Filtrar IPs de cluster interno tipo railnet0 o 10.x.x.x si estamos en dominio
+      if (isCustomDomain && (item.interface.includes('railnet') || item.ip.startsWith('10.'))) {
+        return;
+      }
       const opt = document.createElement('option');
       opt.value = `http://${item.ip}:${data.port}/remote`;
       opt.textContent = `${item.interface}: ${item.ip}`;
-      if (item.ip === data.primaryIp) opt.selected = true;
+      if (!isCustomDomain && item.ip === data.primaryIp) opt.selected = true;
       ipSelector.appendChild(opt);
     });
 
@@ -98,14 +134,15 @@ async function loadServerInfo() {
 ipSelector.addEventListener('change', async (e) => {
   const newUrl = e.target.value;
   remoteUrlText.textContent = newUrl;
-  // Actualizar QR dinámicamente
   try {
-    // Si la librería QRCode está o volvemos a pedirla
-    const res = await fetch(`/api/server-info`);
-    const data = await res.json();
-    // Podemos crear un QR dinámico con la nueva URL
-    remoteUrlText.textContent = newUrl;
-  } catch (e) {}
+    const qrRes = await fetch(`/api/qr?url=${encodeURIComponent(newUrl)}`);
+    const qrData = await qrRes.json();
+    if (qrData.qrDataUrl) {
+      qrImage.src = qrData.qrDataUrl;
+    }
+  } catch (e) {
+    console.error('Error actualizando QR:', e);
+  }
 });
 
 btnCopyUrl.addEventListener('click', () => {

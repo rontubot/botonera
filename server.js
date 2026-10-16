@@ -168,20 +168,24 @@ app.get('/api/server-info', async (req, res) => {
   const ips = getLocalIps();
   const primaryIp = ips[0] ? ips[0].ip : 'localhost';
   
-  // Detectar si está corriendo en Railway u otro entorno público
-  const reqHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+  // Detectar el host real de la petición actual (ej: botonera.up.railway.app)
+  const reqHost = req.query.host || req.headers['x-forwarded-host'] || req.headers.host || '';
   const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-  const isCloudOrDomain = process.env.RAILWAY_PUBLIC_DOMAIN || 
-                          process.env.PUBLIC_URL || 
-                          (!reqHost.includes('localhost') && !reqHost.includes('127.0.0.1') && !reqHost.startsWith('192.168.') && !reqHost.startsWith('10.') && !reqHost.startsWith('172.'));
+  const isPrivateHost = reqHost.includes('localhost') || 
+                        reqHost.includes('127.0.0.1') || 
+                        reqHost.startsWith('192.168.') || 
+                        reqHost.startsWith('10.') || 
+                        reqHost.startsWith('172.');
 
   let remoteUrl = `http://${primaryIp}:${PORT}/remote`;
-  if (process.env.PUBLIC_URL) {
+
+  // PRIORIDAD 1: Si la petición viene por un dominio público real (personalizado o de Railway), usarlo
+  if (reqHost && !isPrivateHost) {
+    remoteUrl = `${proto}://${reqHost}/remote`;
+  } else if (process.env.PUBLIC_URL) {
     remoteUrl = `${process.env.PUBLIC_URL.replace(/\/$/, '')}/remote`;
   } else if (process.env.RAILWAY_PUBLIC_DOMAIN) {
     remoteUrl = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/remote`;
-  } else if (isCloudOrDomain && reqHost) {
-    remoteUrl = `${proto}://${reqHost}/remote`;
   }
   
   let qrDataUrl = '';
@@ -207,6 +211,25 @@ app.get('/api/server-info', async (req, res) => {
     buzzerState,
     connectedCount: connectedDevices.size
   });
+});
+
+// Endpoint para generar QR dinámicamente si el cliente tiene un dominio personalizado
+app.get('/api/qr', async (req, res) => {
+  const text = req.query.url || req.query.text || '';
+  if (!text) return res.status(400).json({ error: 'Falta parámetro url' });
+  try {
+    const qrDataUrl = await QRCode.toDataURL(text, {
+      margin: 2,
+      scale: 8,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff'
+      }
+    });
+    res.json({ qrDataUrl });
+  } catch (err) {
+    res.status(500).json({ error: 'Error generando QR' });
+  }
 });
 
 app.get('/api/buttons', (req, res) => {
