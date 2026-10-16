@@ -64,50 +64,7 @@ function saveButtons(buttons) {
   }
 }
 
-// Sincronizar automáticamente cualquier sonido nuevo que esté en la carpeta public/sounds
-function syncSoundsFromDisk() {
-  const currentButtons = loadButtons();
-  const registeredFiles = new Set(currentButtons.map(b => b.sound));
-  
-  if (!fs.existsSync(SOUNDS_DIR)) return currentButtons;
-
-  const files = fs.readdirSync(SOUNDS_DIR);
-  const audioExtensions = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
-  const defaultColors = ['#0284c7', '#ea580c', '#d97706', '#ca8a04', '#e11d48', '#8b5cf6', '#10b981', '#f59e0b'];
-  let added = false;
-
-  files.forEach(file => {
-    const ext = path.extname(file).toLowerCase();
-    if (audioExtensions.has(ext) && !registeredFiles.has(file)) {
-      const baseName = path.parse(file).name;
-      // Formatear nombre bonito
-      const formattedName = baseName
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-
-      const randomColor = defaultColors[Math.floor(Math.random() * defaultColors.length)];
-      
-      currentButtons.push({
-        id: 'btn-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-        name: formattedName,
-        sound: file,
-        color: randomColor,
-        icon: '🎵',
-        volume: 1.0
-      });
-      registeredFiles.add(file);
-      added = true;
-    }
-  });
-
-  if (added) {
-    saveButtons(currentButtons);
-    console.log(`[Auto-Sync] Se sincronizaron nuevos archivos de sonido desde ${SOUNDS_DIR}`);
-  }
-  return currentButtons;
-}
-
-let buttons = syncSoundsFromDisk();
+let buttons = loadButtons();
 
 // Obtener IPs locales de la PC
 function getLocalIps() {
@@ -233,7 +190,6 @@ app.get('/api/qr', async (req, res) => {
 });
 
 app.get('/api/buttons', (req, res) => {
-  buttons = syncSoundsFromDisk();
   res.json(buttons);
 });
 
@@ -273,14 +229,29 @@ app.post('/api/buttons', upload.single('audio'), (req, res) => {
   }
 });
 
-// Eliminar un botón
+// Eliminar un botón de forma definitiva
 app.delete('/api/buttons/:id', (req, res) => {
   const { id } = req.params;
-  const initialLen = buttons.length;
-  buttons = buttons.filter(b => b.id !== id);
+  const btnToDelete = buttons.find(b => b.id === id);
   
-  if (buttons.length !== initialLen) {
+  if (btnToDelete) {
+    buttons = buttons.filter(b => b.id !== id);
     saveButtons(buttons);
+
+    // Si el archivo físico de sonido existe y ningún otro botón lo usa, borrarlo del disco
+    if (btnToDelete.sound) {
+      const stillUsed = buttons.some(b => b.sound === btnToDelete.sound);
+      if (!stillUsed) {
+        const filePath = path.join(SOUNDS_DIR, btnToDelete.sound);
+        if (fs.existsSync(filePath)) {
+          fs.unlink(filePath, (err) => {
+            if (err) console.error('Error al eliminar archivo físico:', err);
+          });
+        }
+      }
+    }
+
+    // Notificar inmediatamente a la PC y a todos los teléfonos conectados
     io.emit('buttons_updated', buttons);
     return res.json({ success: true });
   }
