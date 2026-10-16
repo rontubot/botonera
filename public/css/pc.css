@@ -103,32 +103,6 @@ body {
   box-shadow: 0 0 10px #ef4444;
 }
 
-.mode-toggle {
-  display: flex;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 9999px;
-  padding: 4px;
-}
-
-.mode-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 8px 16px;
-  border-radius: 9999px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mode-btn.active {
-  background: var(--primary);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-}
-
 .volume-control {
   display: flex;
   align-items: center;
@@ -447,54 +421,6 @@ body {
   cursor: pointer;
 }
 
-/* Buzzer Announcement Card */
-.buzzer-banner {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
-  border-radius: var(--radius);
-  padding: 18px;
-  text-align: center;
-  display: none;
-  animation: pulse-border 1.5s infinite;
-}
-
-.buzzer-banner.active {
-  display: block;
-}
-
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-  70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
-
-.buzzer-banner h3 {
-  font-size: 1.3rem;
-  margin-bottom: 4px;
-}
-
-.buzzer-winner-name {
-  font-size: 1.8rem;
-  font-weight: 900;
-  margin: 6px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.btn-reset-buzzer {
-  background: white;
-  color: #b45309;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-weight: 800;
-  margin-top: 10px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.btn-reset-buzzer:hover {
-  background: #fef3c7;
-}
 
 /* Live Activity Log */
 .activity-card h3 {

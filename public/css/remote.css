@@ -99,35 +99,6 @@ body {
   box-shadow: 0 0 8px #ef4444;
 }
 
-/* Status Banner (Quiz/Buzzer lock feedback) */
-.status-banner {
-  padding: 12px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  text-align: center;
-  display: none;
-  font-weight: 700;
-  font-size: 0.9rem;
-  animation: popIn 0.2s ease;
-}
-
-@keyframes popIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.status-banner.winner {
-  display: block;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-}
-
-.status-banner.blocked {
-  display: block;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-}
 
 /* Sound Buttons Grid */
 .buttons-container {

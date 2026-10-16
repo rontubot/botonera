@@ -22,12 +22,6 @@ const audioUnlockBanner = document.getElementById('audioUnlockBanner');
 const btnUnlockAudio = document.getElementById('btnUnlockAudio');
 const socketDot = document.getElementById('socketDot');
 const socketStatusText = document.getElementById('socketStatusText');
-const modeFreeBtn = document.getElementById('modeFreeBtn');
-const modeQuizBtn = document.getElementById('modeQuizBtn');
-const buzzerBanner = document.getElementById('buzzerBanner');
-const buzzerWinnerName = document.getElementById('buzzerWinnerName');
-const buzzerWinnerDetails = document.getElementById('buzzerWinnerDetails');
-const btnResetBuzzer = document.getElementById('btnResetBuzzer');
 
 // Modal Elements
 const addModal = document.getElementById('addModal');
@@ -128,8 +122,6 @@ async function loadServerInfo() {
       if (!isCustomDomain && item.ip === data.primaryIp) opt.selected = true;
       ipSelector.appendChild(opt);
     });
-
-    updateBuzzerUI(data.buzzerState);
   } catch (err) {
     console.error('Error cargando info del servidor:', err);
   }
@@ -327,53 +319,6 @@ socket.on('buttons_updated', (newButtons) => {
   buttons = newButtons;
   renderButtons();
 });
-
-// Modo Quiz / Buzzer
-modeFreeBtn.addEventListener('click', () => {
-  socket.emit('set_buzzer_mode', 'free');
-});
-
-modeQuizBtn.addEventListener('click', () => {
-  socket.emit('set_buzzer_mode', 'quiz');
-});
-
-socket.on('buzzer_mode_changed', (state) => {
-  updateBuzzerUI(state);
-});
-
-socket.on('buzzer_locked', (winner) => {
-  buzzerBanner.classList.add('active');
-  buzzerWinnerName.textContent = winner.name;
-  buzzerWinnerDetails.textContent = `fue el primero con "${winner.buttonName}" (${winner.time})`;
-});
-
-socket.on('buzzer_reset', () => {
-  buzzerBanner.classList.remove('active');
-});
-
-btnResetBuzzer.addEventListener('click', () => {
-  socket.emit('reset_buzzer');
-});
-
-function updateBuzzerUI(state) {
-  if (!state) return;
-  if (state.mode === 'quiz') {
-    modeQuizBtn.classList.add('active');
-    modeFreeBtn.classList.remove('active');
-  } else {
-    modeFreeBtn.classList.add('active');
-    modeQuizBtn.classList.remove('active');
-    buzzerBanner.classList.remove('active');
-  }
-
-  if (state.isLocked && state.winner) {
-    buzzerBanner.classList.add('active');
-    buzzerWinnerName.textContent = state.winner.name;
-    buzzerWinnerDetails.textContent = `fue el primero con "${state.winner.buttonName}"`;
-  } else {
-    buzzerBanner.classList.remove('active');
-  }
-}
 
 // Modal Agregar / Editar Sonido
 function openCreateModal() {

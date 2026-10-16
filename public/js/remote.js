@@ -1,7 +1,6 @@
 // Estado del cliente Móvil
 let currentButtons = [];
 let myDeviceName = localStorage.getItem('botonera_username') || '';
-let isBlocked = false;
 
 // Elementos del DOM
 const buttonsContainer = document.getElementById('buttonsContainer');
@@ -12,8 +11,6 @@ const nameForm = document.getElementById('nameForm');
 const nameInput = document.getElementById('nameInput');
 const socketDot = document.getElementById('socketDot');
 const socketText = document.getElementById('socketText');
-const statusBanner = document.getElementById('statusBanner');
-const statusBannerText = document.getElementById('statusBannerText');
 
 // Inicialización de Nombre
 if (!myDeviceName) {
@@ -144,12 +141,6 @@ function renderButtons() {
 
 // Acción al pulsar un botón
 function handlePressButton(btn, element, event) {
-  if (isBlocked) {
-    // Feedback de bloqueo
-    if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
-    return;
-  }
-
   // Vibración táctil háptica (si el móvil lo permite)
   if ('vibrate' in navigator) {
     try {
@@ -193,51 +184,6 @@ socket.on('buttons_updated', (newButtons) => {
   currentButtons = newButtons;
   renderButtons();
 });
-
-// Manejo de Modo Buzzer / Quiz
-socket.on('buzzer_state', (state) => {
-  handleBuzzerState(state);
-});
-
-socket.on('buzzer_locked', (winner) => {
-  isBlocked = true;
-  if (winner.name === myDeviceName) {
-    statusBanner.className = 'status-banner winner';
-    statusBannerText.textContent = `👑 ¡ERES EL MÁS RÁPIDO! Has pulsado primero.`;
-    if ('vibrate' in navigator) navigator.vibrate([100, 50, 100, 50, 150]);
-  } else {
-    statusBanner.className = 'status-banner blocked';
-    statusBannerText.textContent = `⏳ ¡BLOQUEADO! ${escapeHtml(winner.name)} pulsó primero.`;
-  }
-});
-
-socket.on('buzzer_reset', () => {
-  isBlocked = false;
-  statusBanner.className = 'status-banner';
-  statusBanner.style.display = 'none';
-});
-
-socket.on('buzzer_mode_changed', (state) => {
-  handleBuzzerState(state);
-});
-
-function handleBuzzerState(state) {
-  if (!state) return;
-  if (state.mode === 'quiz' && state.isLocked && state.winner) {
-    isBlocked = true;
-    if (state.winner.name === myDeviceName) {
-      statusBanner.className = 'status-banner winner';
-      statusBannerText.textContent = `👑 ¡ERES EL MÁS RÁPIDO!`;
-    } else {
-      statusBanner.className = 'status-banner blocked';
-      statusBannerText.textContent = `⏳ ¡BLOQUEADO! ${escapeHtml(state.winner.name)} pulsó primero.`;
-    }
-  } else {
-    isBlocked = false;
-    statusBanner.className = 'status-banner';
-    statusBanner.style.display = 'none';
-  }
-}
 
 function escapeHtml(str) {
   if (!str) return '';

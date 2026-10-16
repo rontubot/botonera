@@ -92,13 +92,6 @@ function getLocalIps() {
   return ips;
 }
 
-// Estado del juego / Buzzer
-const buzzerState = {
-  mode: 'free', // 'free' o 'quiz' (bloqueo al primero)
-  isLocked: false,
-  winner: null,
-  lockTimestamp: null
-};
 
 // Mapa de dispositivos conectados
 const connectedDevices = new Map();
@@ -165,7 +158,6 @@ app.get('/api/server-info', async (req, res) => {
     primaryIp,
     remoteUrl,
     qrDataUrl,
-    buzzerState,
     connectedCount: connectedDevices.size
   });
 });
@@ -317,37 +309,15 @@ io.on('connection', (socket) => {
 
     // Notificar lista de dispositivos a la PC
     io.emit('devices_updated', Array.from(connectedDevices.values()));
-    socket.emit('buzzer_state', buzzerState);
   });
 
-  // Evento: Alguien pulsó un botón en su teléfono
+  // Evento: Alguien pulsó un botón en su teléfono -> reproducir en la PC
   socket.on('press_button', (data) => {
     const { buttonId } = data;
     const button = buttons.find(b => b.id === buttonId);
     if (!button) return;
 
     const deviceName = data.deviceName || deviceInfo.name || 'Teléfono';
-
-    // Si está en modo Quiz y ya está bloqueado
-    if (buzzerState.mode === 'quiz' && buzzerState.isLocked) {
-      socket.emit('buzzer_blocked', {
-        winner: buzzerState.winner
-      });
-      return;
-    }
-
-    // Si está en modo Quiz y es el primero
-    if (buzzerState.mode === 'quiz' && !buzzerState.isLocked) {
-      buzzerState.isLocked = true;
-      buzzerState.winner = {
-        name: deviceName,
-        buttonName: button.name,
-        time: new Date().toLocaleTimeString()
-      };
-      buzzerState.lockTimestamp = Date.now();
-      
-      io.emit('buzzer_locked', buzzerState.winner);
-    }
 
     // Notificar a la PC para que reproduzca el sonido
     io.emit('play_sound_on_pc', {
@@ -364,22 +334,6 @@ io.on('connection', (socket) => {
       buttonId,
       status: 'played'
     });
-  });
-
-  // Control desde la PC: Reiniciar Quiz/Buzzer
-  socket.on('reset_buzzer', () => {
-    buzzerState.isLocked = false;
-    buzzerState.winner = null;
-    buzzerState.lockTimestamp = null;
-    io.emit('buzzer_reset');
-  });
-
-  // Control desde la PC: Cambiar modo ('free' o 'quiz')
-  socket.on('set_buzzer_mode', (mode) => {
-    buzzerState.mode = mode;
-    buzzerState.isLocked = false;
-    buzzerState.winner = null;
-    io.emit('buzzer_mode_changed', buzzerState);
   });
 
   // Parar todos los sonidos en la PC
