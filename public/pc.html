@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Botonera Virtual - PC Base (Reproductor)</title>
+  <link rel="stylesheet" href="/css/pc.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Alerta para desbloquear audio en navegadores modernos -->
+  <div id="audioUnlockBanner" class="audio-banner">
+    <div>
+      <strong>🔊 El audio del navegador está en espera:</strong> Haz clic aquí para permitir que la PC reproduzca los sonidos que envíen los teléfonos.
+    </div>
+    <button id="btnUnlockAudio">Activar Sonido</button>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-section">
+      <div class="logo-icon">🔊</div>
+      <div>
+        <h1>Botonera PC Central</h1>
+        <p>Los sonidos presionados en los teléfonos se reproducen aquí</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <!-- Estado de conexión -->
+      <div class="status-badge">
+        <span id="socketDot" class="status-dot"></span>
+        <span id="socketStatusText">Conectado</span>
+      </div>
+
+      <!-- Selector de Modo -->
+      <div class="mode-toggle">
+        <button id="modeFreeBtn" class="mode-btn active" title="Todos pueden tocar cualquier botón sin límite">Modo Libre</button>
+        <button id="modeQuizBtn" class="mode-btn" title="El primero que toca bloquea a los demás (ideal juegos o preguntas)">Modo Buzzer/Quiz</button>
+      </div>
+
+      <!-- Volumen General -->
+      <div class="volume-control">
+        <span>🔊</span>
+        <input type="range" id="masterVolume" min="0" max="1" step="0.05" value="0.9">
+      </div>
+
+      <!-- Detener todos los audios -->
+      <button id="btnStopAll" class="btn-stop-all" title="Silenciar audios activos">
+        🛑 Parar Audios
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <div class="main-layout">
+    
+    <!-- Columna Izquierda: Botones de Sonido -->
+    <section class="soundboard-section">
+      <div class="section-header">
+        <h2>🎛️ Botones Disponibles (<span id="buttonsCount">0</span>)</h2>
+        <button id="btnOpenAddModal" class="btn-add">
+          ➕ Nuevo Sonido
+        </button>
+      </div>
+
+      <div id="buttonsGrid" class="buttons-grid">
+        <!-- Renderizado dinámicamente -->
+      </div>
+    </section>
+
+    <!-- Columna Derecha: Sidebar (QR, Conexión, Ganador Buzzer, Registro en vivo) -->
+    <aside class="sidebar">
+
+      <!-- Notificación de Ganador de Buzzer (Modo Quiz) -->
+      <div id="buzzerBanner" class="buzzer-banner">
+        <h3>⚡ ¡EL MÁS RÁPIDO!</h3>
+        <div id="buzzerWinnerName" class="buzzer-winner-name">---</div>
+        <p id="buzzerWinnerDetails">presionó el botón</p>
+        <button id="btnResetBuzzer" class="btn-reset-buzzer">🔄 Nueva Ronda (Desbloquear)</button>
+      </div>
+
+      <!-- Tarjeta Código QR para Teléfonos -->
+      <div class="card qr-card">
+        <h3>📱 Conectar Teléfonos</h3>
+        <p>Escanea con la cámara del móvil en la misma red Wi-Fi</p>
+        
+        <div class="qr-box">
+          <img id="qrImage" src="" alt="Código QR para conectar teléfonos">
+        </div>
+
+        <div class="url-box">
+          <span id="remoteUrlText" class="url-text">Cargando enlace...</span>
+          <button id="btnCopyUrl" class="btn-copy">Copiar</button>
+        </div>
+
+        <!-- Selector de IP por si hay varias redes -->
+        <select id="ipSelector" class="ip-selector">
+          <option>Detectando dirección de red...</option>
+        </select>
+      </div>
+
+      <!-- Dispositivos Conectados -->
+      <div class="card">
+        <h3>📲 Dispositivos Conectados (<span id="devicesCount">0</span>)</h3>
+        <div id="devicesList" class="devices-list">
+          <!-- Lista en vivo -->
+        </div>
+      </div>
+
+      <!-- Registro de Actividad en Tiempo Real -->
+      <div class="card activity-card">
+        <h3>
+          <span>⏱️ Registro en Vivo</span>
+          <button id="btnClearLog" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.75rem;">Limpiar</button>
+        </h3>
+        <ul id="activityList" class="activity-list">
+          <li style="color: var(--text-muted); font-size: 0.8rem;">Esperando pulsaciones desde los teléfonos...</li>
+        </ul>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- Modal para Agregar Nuevo Sonido -->
+  <div id="addModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>➕ Agregar Botón de Sonido</h3>
+        <button id="btnCloseModal" class="btn-close-modal">&times;</button>
+      </div>
+
+      <form id="addSoundForm">
+        <div class="form-group">
+          <label for="soundName">Nombre del botón:</label>
+          <input type="text" id="soundName" placeholder="Ej: Grito Wilhelm, Risas, etc." required>
+        </div>
+
+        <div class="form-group">
+          <label for="soundFile">Archivo de audio (MP3, WAV, OGG):</label>
+          <input type="file" id="soundFile" accept="audio/*" required>
+        </div>
+
+        <div class="form-group">
+          <label>Color del botón:</label>
+          <div id="colorPicker" class="color-options">
+            <button type="button" class="color-btn selected" style="background: #3b82f6;" data-color="#3b82f6"></button>
+            <button type="button" class="color-btn" style="background: #10b981;" data-color="#10b981"></button>
+            <button type="button" class="color-btn" style="background: #ef4444;" data-color="#ef4444"></button>
+            <button type="button" class="color-btn" style="background: #f59e0b;" data-color="#f59e0b"></button>
+            <button type="button" class="color-btn" style="background: #8b5cf6;" data-color="#8b5cf6"></button>
+            <button type="button" class="color-btn" style="background: #ec4899;" data-color="#ec4899"></button>
+            <button type="button" class="color-btn" style="background: #14b8a6;" data-color="#14b8a6"></button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Ícono / Emoji:</label>
+          <div id="iconPicker" class="icon-options">
+            <button type="button" class="icon-btn selected" data-icon="🎵">🎵</button>
+            <button type="button" class="icon-btn" data-icon="💥">💥</button>
+            <button type="button" class="icon-btn" data-icon="🚨">🚨</button>
+            <button type="button" class="icon-btn" data-icon="🤣">🤣</button>
+            <button type="button" class="icon-btn" data-icon="🎉">🎉</button>
+            <button type="button" class="icon-btn" data-icon="🔥">🔥</button>
+            <button type="button" class="icon-btn" data-icon="🍻">🍻</button>
+            <button type="button" class="icon-btn" data-icon="🔔">🔔</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnCancelAdd" class="btn-cancel">Cancelar</button>
+          <button type="submit" id="btnSubmitAdd" class="btn-save">Guardar Botón</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/pc.js"></script>
+</body>
+</html>

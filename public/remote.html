@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Botonera Remota</title>
+  <link rel="stylesheet" href="/css/remote.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Header Remoto -->
+  <header class="remote-header">
+    <div id="btnChangeName" class="user-tag" title="Toca para cambiar tu nombre">
+      <div class="user-avatar">👤</div>
+      <div>
+        <div id="userNameDisplay" class="user-name">Dispositivo</div>
+        <div class="user-tag-edit">Cambiar nombre</div>
+      </div>
+    </div>
+
+    <div class="connection-indicator">
+      <span id="socketDot" class="status-dot"></span>
+      <span id="socketText">Conectando...</span>
+    </div>
+  </header>
+
+  <!-- Banner de Estado de Buzzer / Quiz -->
+  <div id="statusBanner" class="status-banner">
+    <span id="statusBannerText">Estado</span>
+  </div>
+
+  <!-- Contenedor de Botones Móviles -->
+  <main id="buttonsContainer" class="buttons-container">
+    <!-- Generado dinámicamente -->
+  </main>
+
+  <footer class="remote-footer">
+    <span>🔊 Los sonidos se reproducen en la PC principal</span>
+  </footer>
+
+  <!-- Modal para Elegir Nombre -->
+  <div id="nameModal" class="name-modal-overlay">
+    <div class="name-modal">
+      <h2>👋 ¡Hola!</h2>
+      <p>Ingresa tu nombre o apodo para que la PC sepa quién presionó el botón:</p>
+      <form id="nameForm">
+        <input type="text" id="nameInput" maxlength="20" placeholder="Tu Nombre o Apodo" required autocomplete="off">
+        <button type="submit">Listo para Jugar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/remote.js"></script>
+</body>
+</html>

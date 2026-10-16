@@ -1,0 +1,23 @@
+{
+  "name": "botonera",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "multer": "^2.4.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  }
+}

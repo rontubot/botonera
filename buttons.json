@@ -1,0 +1,146 @@
+[
+  {
+    "id": "btn-cheers",
+    "name": "Chinchín / Birra",
+    "sound": "cheers.wav",
+    "color": "#10b981",
+    "icon": "🍻",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-airhorn",
+    "name": "Airhorn Fiesta",
+    "sound": "airhorn.wav",
+    "color": "#ef4444",
+    "icon": "📢",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-buzzer",
+    "name": "Buzzer Error",
+    "sound": "buzzer.wav",
+    "color": "#dc2626",
+    "icon": "❌",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-victory",
+    "name": "Victoria / Win",
+    "sound": "victory.wav",
+    "color": "#f59e0b",
+    "icon": "🏆",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-fail",
+    "name": "Fail Trompeta",
+    "sound": "fail.wav",
+    "color": "#6b7280",
+    "icon": "🎺",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-bell",
+    "name": "Campanilla Ding",
+    "sound": "bell.wav",
+    "color": "#3b82f6",
+    "icon": "🛎️",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-applause",
+    "name": "Aplausos",
+    "sound": "applause.wav",
+    "color": "#8b5cf6",
+    "icon": "👏",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-coin",
+    "name": "Moneda 8-Bit",
+    "sound": "coin.wav",
+    "color": "#ec4899",
+    "icon": "🪙",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch",
+    "name": "Golpe Punch",
+    "sound": "punch.wav",
+    "color": "#f97316",
+    "icon": "🥊",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-rimshot",
+    "name": "Chiste Ba-Dum-Tss",
+    "sound": "rimshot.wav",
+    "color": "#14b8a6",
+    "icon": "🥁",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-caida",
+    "name": "Caída",
+    "sound": "caida.mp3",
+    "color": "#0284c7",
+    "icon": "🤸",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-golpe-chiste",
+    "name": "Golpe Cómico",
+    "sound": "golpe chiste.mp3",
+    "color": "#f97316",
+    "icon": "🤡",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-paliza",
+    "name": "Paliza / Combo",
+    "sound": "paliza.mp3",
+    "color": "#b91c1c",
+    "icon": "💥",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch-1",
+    "name": "Puñetazo 1",
+    "sound": "punch 1.mp3",
+    "color": "#ea580c",
+    "icon": "👊",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch-2",
+    "name": "Puñetazo 2",
+    "sound": "punch 2.mp3",
+    "color": "#d97706",
+    "icon": "🥊",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch-3",
+    "name": "Puñetazo 3",
+    "sound": "punch 3.mp3",
+    "color": "#ca8a04",
+    "icon": "⚡",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch-4",
+    "name": "Puñetazo 4",
+    "sound": "punch 4.mp3",
+    "color": "#e11d48",
+    "icon": "💢",
+    "volume": 1.0
+  },
+  {
+    "id": "btn-punch-5-dbz",
+    "name": "Golpe Dragon Ball",
+    "sound": "punch 5 dragon ball.mp3",
+    "color": "#f59e0b",
+    "icon": "🐉",
+    "volume": 1.0
+  }
+]
