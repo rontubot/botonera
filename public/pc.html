@@ -48,9 +48,18 @@
     <section class="soundboard-section">
       <div class="section-header">
         <h2>🎛️ Botones Disponibles (<span id="buttonsCount">0</span>)</h2>
-        <button id="btnOpenAddModal" class="btn-add">
-          ➕ Nuevo Sonido
-        </button>
+        <div class="header-action-group">
+          <a href="/api/backup/export" class="btn-backup" title="Descargar copia de seguridad (.zip) con todos tus audios y botones">
+            💾 Respaldar
+          </a>
+          <label class="btn-backup btn-import-label" title="Restaurar copia de seguridad desde un archivo .zip">
+            📥 Restaurar
+            <input type="file" id="backupZipInput" accept=".zip" style="display: none;">
+          </label>
+          <button id="btnOpenAddModal" class="btn-add">
+            ➕ Nuevo Sonido
+          </button>
+        </div>
       </div>
 
       <div id="buttonsGrid" class="buttons-grid">

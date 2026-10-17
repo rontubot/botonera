@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const QRCode = require('qrcode');
 const multer = require('multer');
+const AdmZip = require('adm-zip');
 
 const app = express();
 app.set('trust proxy', true);
@@ -15,15 +16,51 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const BUTTONS_FILE = path.join(__dirname, 'buttons.json');
-const SOUNDS_DIR = path.join(__dirname, 'public', 'sounds');
 
-// Asegurar que existe el directorio de sonidos
+// Configuración de Almacenamiento Persistente (Soporta Railway Volume)
+// Si existe /app/storage (volumen en Railway), /data o la variable STORAGE_PATH
+const STORAGE_ROOT = process.env.STORAGE_PATH || 
+                     (fs.existsSync('/app/storage') ? '/app/storage' : 
+                     (fs.existsSync('/data') ? '/data' : path.join(__dirname, 'storage')));
+
+const SOUNDS_DIR = path.join(STORAGE_ROOT, 'sounds');
+const BUTTONS_FILE = path.join(STORAGE_ROOT, 'buttons.json');
+const INITIAL_SOUNDS_DIR = path.join(__dirname, 'public', 'sounds');
+const INITIAL_BUTTONS_FILE = path.join(__dirname, 'buttons.json');
+
+// Asegurar que existe el directorio de almacenamiento persistente
 if (!fs.existsSync(SOUNDS_DIR)) {
   fs.mkdirSync(SOUNDS_DIR, { recursive: true });
 }
 
-// Configuración de Multer para subir sonidos
+// Inicializar archivos si la carpeta de almacenamiento es nueva
+function initStorage() {
+  // 1. Si no existe el buttons.json persistente, copiar el base del repositorio
+  if (!fs.existsSync(BUTTONS_FILE) && fs.existsSync(INITIAL_BUTTONS_FILE)) {
+    try {
+      fs.copyFileSync(INITIAL_BUTTONS_FILE, BUTTONS_FILE);
+      console.log('[Storage] Inicializado buttons.json en almacenamiento persistente');
+    } catch (e) {
+      console.error('[Storage] Error al inicializar buttons.json:', e);
+    }
+  }
+
+  // 2. Copiar los sonidos que vienen en el repositorio hacia el almacenamiento si aún no existen
+  if (fs.existsSync(INITIAL_SOUNDS_DIR)) {
+    const defaultSounds = fs.readdirSync(INITIAL_SOUNDS_DIR);
+    defaultSounds.forEach(soundFile => {
+      const dest = path.join(SOUNDS_DIR, soundFile);
+      if (!fs.existsSync(dest)) {
+        try {
+          fs.copyFileSync(path.join(INITIAL_SOUNDS_DIR, soundFile), dest);
+        } catch (e) {}
+      }
+    });
+  }
+}
+initStorage();
+
+// Configuración de Multer para subir sonidos al almacenamiento persistente
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, SOUNDS_DIR);
@@ -40,13 +77,19 @@ const upload = multer({
 
 // Middleware
 app.use(express.json());
+// Servir audios desde el almacenamiento persistente con fallback a public/sounds
+app.use('/sounds', express.static(SOUNDS_DIR));
+app.use('/sounds', express.static(INITIAL_SOUNDS_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Cargar botones
+// Cargar botones (primero desde almacenamiento persistente, luego inicial)
 function loadButtons() {
   try {
     if (fs.existsSync(BUTTONS_FILE)) {
       const data = fs.readFileSync(BUTTONS_FILE, 'utf8');
+      return JSON.parse(data);
+    } else if (fs.existsSync(INITIAL_BUTTONS_FILE)) {
+      const data = fs.readFileSync(INITIAL_BUTTONS_FILE, 'utf8');
       return JSON.parse(data);
     }
   } catch (err) {
@@ -55,10 +98,10 @@ function loadButtons() {
   return [];
 }
 
-// Guardar botones
-function saveButtons(buttons) {
+// Guardar botones en almacenamiento persistente
+function saveButtons(buttonsData) {
   try {
-    fs.writeFileSync(BUTTONS_FILE, JSON.stringify(buttons, null, 2), 'utf8');
+    fs.writeFileSync(BUTTONS_FILE, JSON.stringify(buttonsData, null, 2), 'utf8');
   } catch (err) {
     console.error('Error al guardar buttons.json:', err);
   }
@@ -178,6 +221,69 @@ app.get('/api/qr', async (req, res) => {
     res.json({ qrDataUrl });
   } catch (err) {
     res.status(500).json({ error: 'Error generando QR' });
+  }
+});
+
+// Descargar copia de seguridad completa (ZIP con sonidos y configuración)
+app.get('/api/backup/export', (req, res) => {
+  try {
+    const zip = new AdmZip();
+
+    // Agregar buttons.json actual
+    if (fs.existsSync(BUTTONS_FILE)) {
+      zip.addLocalFile(BUTTONS_FILE);
+    } else if (fs.existsSync(INITIAL_BUTTONS_FILE)) {
+      zip.addLocalFile(INITIAL_BUTTONS_FILE);
+    }
+
+    // Agregar carpeta de sonidos persistentes
+    if (fs.existsSync(SOUNDS_DIR)) {
+      const files = fs.readdirSync(SOUNDS_DIR);
+      files.forEach(f => {
+        const fullPath = path.join(SOUNDS_DIR, f);
+        if (fs.statSync(fullPath).isFile()) {
+          zip.addLocalFile(fullPath, 'sounds');
+        }
+      });
+    }
+
+    const zipBuffer = zip.toBuffer();
+    const filename = `botonera-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': zipBuffer.length
+    });
+
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error('Error al exportar backup:', err);
+    res.status(500).json({ error: 'Error generando la copia de seguridad' });
+  }
+});
+
+// Restaurar copia de seguridad desde un archivo ZIP
+app.post('/api/backup/import', upload.single('backupZip'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Debes seleccionar un archivo .zip' });
+    }
+
+    const zip = new AdmZip(req.file.path);
+    zip.extractAllTo(STORAGE_ROOT, true);
+
+    // Borrar el zip temporal subido
+    fs.unlink(req.file.path, () => {});
+
+    // Recargar botones
+    buttons = loadButtons();
+    io.emit('buttons_updated', buttons);
+
+    res.json({ success: true, count: buttons.length });
+  } catch (err) {
+    console.error('Error al restaurar backup:', err);
+    res.status(500).json({ error: 'Error al procesar el archivo zip de respaldo' });
   }
 });
 

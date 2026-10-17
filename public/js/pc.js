@@ -769,6 +769,42 @@ function escapeHtml(str) {
   })[m]);
 }
 
+// Restaurar copia de seguridad (.zip)
+const backupZipInput = document.getElementById('backupZipInput');
+if (backupZipInput) {
+  backupZipInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!confirm(`¿Restaurar la copia de seguridad "${file.name}"? Esto sincronizará todos tus sonidos y botones.`)) {
+      backupZipInput.value = '';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('backupZip', file);
+
+    try {
+      const res = await fetch('/api/backup/import', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`¡Copia de seguridad restaurada con éxito! Se cargaron ${data.count} botones.`);
+        loadButtons();
+      } else {
+        alert('Error al restaurar: ' + (data.error || 'Archivo inválido'));
+      }
+    } catch (err) {
+      console.error('Error restaurando backup:', err);
+      alert('Error de conexión al restaurar el respaldo');
+    } finally {
+      backupZipInput.value = '';
+    }
+  });
+}
+
 // Inicializar
 loadServerInfo();
 loadButtons();
