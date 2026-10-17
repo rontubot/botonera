@@ -18,8 +18,6 @@ const devicesList = document.getElementById('devicesList');
 const devicesCount = document.getElementById('devicesCount');
 const activityList = document.getElementById('activityList');
 const btnClearLog = document.getElementById('btnClearLog');
-const audioUnlockBanner = document.getElementById('audioUnlockBanner');
-const btnUnlockAudio = document.getElementById('btnUnlockAudio');
 const socketDot = document.getElementById('socketDot');
 const socketStatusText = document.getElementById('socketStatusText');
 
@@ -40,8 +38,12 @@ const colorPicker = document.getElementById('colorPicker');
 let selectedColor = '#3b82f6';
 let selectedIcon = '🎵';
 
-// Socket.io
-const socket = io();
+// Socket.io con reconexión robusta
+const socket = io({
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: Infinity
+});
 
 socket.on('connect', () => {
   socketDot.classList.remove('offline');
@@ -51,22 +53,77 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
   socketDot.classList.add('offline');
-  socketStatusText.textContent = 'Desconectado';
+  socketStatusText.textContent = 'Reconectando...';
 });
 
-// Desbloqueo de Audio en navegador
-function unlockAudio() {
-  audioUnlocked = true;
-  audioUnlockBanner.style.display = 'none';
-  // Reproducir un sonido silencioso para iniciar el contexto de audio
-  const silent = new Audio();
-  silent.play().catch(() => {});
+// Heartbeat continuo para mantener el socket y la pestaña despiertos en Railway
+setInterval(() => {
+  if (socket && socket.connected) {
+    socket.emit('ping_keepalive');
+  }
+}, 25000);
+
+// ============================================================================
+// MOTOR DE AUDIO PERMANENTE (KEEP-ALIVE INAUDIBLE)
+// ============================================================================
+let audioCtx = null;
+let silentOscillator = null;
+const audioBufferCache = new Map();
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  return audioCtx;
 }
 
-btnUnlockAudio.addEventListener('click', unlockAudio);
-document.body.addEventListener('click', () => {
-  if (!audioUnlocked) unlockAudio();
-}, { once: true });
+// Inicia un flujo de audio inaudible en segundo plano
+// Esto hace que Chrome/Edge/Firefox identifiquen la pestaña como reproductor multimedia activo
+// y NUNCA suspendan el audio ni congelen la pestaña aunque pasen horas sin usarse
+function startSilentKeepAlive() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
+  if (!silentOscillator && ctx.state === 'running') {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.00001; // Totalmente inaudible
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      silentOscillator = osc;
+    } catch (e) {}
+  }
+}
+
+// Despertar silencioso con cualquier interacción en la ventana
+const wakeEvents = ['click', 'touchstart', 'keydown', 'mousedown', 'pointerdown', 'mousemove', 'wheel', 'focus'];
+wakeEvents.forEach(evt => {
+  window.addEventListener(evt, () => {
+    startSilentKeepAlive();
+  }, { passive: true });
+});
+
+// Si la pestaña vuelve a ser visible o tiene foco, asegurar estado activo
+document.addEventListener('visibilitychange', () => {
+  startSilentKeepAlive();
+});
+window.addEventListener('focus', () => {
+  startSilentKeepAlive();
+});
+
+// Intentar iniciar keep-alive inmediatamente
+try {
+  startSilentKeepAlive();
+} catch (e) {}
 
 // Cargar información de red y QR
 async function loadServerInfo() {
@@ -206,13 +263,47 @@ function renderButtons() {
   });
 }
 
+// Reproducir audio con Web Audio API como respaldo infalible
+async function playBufferWithWebAudio(url, volume) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {});
+    }
+
+    let buffer = audioBufferCache.get(url);
+    if (!buffer) {
+      const res = await fetch(url);
+      const arrayBuf = await res.arrayBuffer();
+      buffer = await ctx.decodeAudioData(arrayBuf);
+      audioBufferCache.set(url, buffer);
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = volume;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    source.start(0);
+  } catch (err) {
+    console.warn('Error en reproducción Web Audio:', err);
+  }
+}
+
 // Reproducir Sonido
 function playSound(btn, device) {
   if (!btn || !btn.sound) return;
 
+  // Reactivar keepalive en cada reproducción
+  startSilentKeepAlive();
+
   const audioPath = `/sounds/${btn.sound}`;
+  const effectiveVolume = masterVolume * (btn.volume || 1.0);
   const audio = new Audio(audioPath);
-  audio.volume = masterVolume * (btn.volume || 1.0);
+  audio.volume = effectiveVolume;
+  audio.preload = 'auto';
 
   activeAudios.push(audio);
   audio.addEventListener('ended', () => {
@@ -220,11 +311,10 @@ function playSound(btn, device) {
     if (index > -1) activeAudios.splice(index, 1);
   });
 
-  audio.play().catch(err => {
-    console.warn('Reproducción de audio bloqueada o con error:', err);
-    if (!audioUnlocked) {
-      audioUnlockBanner.style.display = 'flex';
-    }
+  audio.play().catch(() => {
+    // Si el elemento HTML5 Audio encuentra alguna restricción de foco,
+    // usamos inmediatamente el motor Web Audio API como respaldo
+    playBufferWithWebAudio(audioPath, effectiveVolume);
   });
 
   // Animación en la tarjeta de botón en la PC

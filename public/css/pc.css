@@ -139,27 +139,6 @@ body {
   color: white;
 }
 
-/* Audio Banner Alert */
-.audio-banner {
-  background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-  padding: 14px 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: var(--shadow);
-}
-
-.audio-banner button {
-  background: white;
-  color: #1e3a8a;
-  border: none;
-  font-weight: 700;
-  padding: 8px 18px;
-  border-radius: 8px;
-  cursor: pointer;
-}
 
 /* Main Grid */
 .main-layout {
