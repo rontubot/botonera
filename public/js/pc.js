@@ -213,6 +213,7 @@ async function loadButtons() {
     const res = await fetch('/api/buttons');
     buttons = await res.json();
     renderButtons();
+    precacheAllSounds(buttons);
   } catch (err) {
     console.error('Error cargando botones:', err);
   }
@@ -263,6 +264,57 @@ function renderButtons() {
   });
 }
 
+// ============================================================================
+// CACHÉ DE AUDIO EN MEMORIA Y DISCO (CacheStorage API)
+// ============================================================================
+const CACHE_NAME = 'botonera-audio-cache-v1';
+const memoryAudioBlobCache = new Map();
+
+// Obtener o guardar en caché el audio para que una vez que suene quede guardado
+async function getOrCacheAudioUrl(soundFile) {
+  const soundUrl = `/sounds/${encodeURIComponent(soundFile)}`;
+  
+  // 1. Chequeo en memoria RAM
+  if (memoryAudioBlobCache.has(soundFile)) {
+    return memoryAudioBlobCache.get(soundFile);
+  }
+
+  // 2. Chequeo en CacheStorage del navegador
+  if ('caches' in window) {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      let res = await cache.match(soundUrl);
+      if (!res) {
+        // Primera vez que suena: descargar y guardar permanentemente en caché
+        res = await fetch(soundUrl);
+        if (res.ok) {
+          await cache.put(soundUrl, res.clone());
+        }
+      }
+      if (res && res.ok) {
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        memoryAudioBlobCache.set(soundFile, blobUrl);
+        return blobUrl;
+      }
+    } catch (e) {
+      console.warn('Error accediendo a CacheStorage:', e);
+    }
+  }
+
+  return soundUrl;
+}
+
+// Pre-cargar todos los audios en caché en segundo plano
+function precacheAllSounds(buttonsList) {
+  if (!buttonsList || !Array.isArray(buttonsList)) return;
+  buttonsList.forEach(btn => {
+    if (btn.sound) {
+      getOrCacheAudioUrl(btn.sound).catch(() => {});
+    }
+  });
+}
+
 // Reproducir audio con Web Audio API como respaldo infalible
 async function playBufferWithWebAudio(url, volume) {
   try {
@@ -292,16 +344,17 @@ async function playBufferWithWebAudio(url, volume) {
   }
 }
 
-// Reproducir Sonido
-function playSound(btn, device) {
+// Reproducir Sonido (usando caché local)
+async function playSound(btn, device) {
   if (!btn || !btn.sound) return;
 
   // Reactivar keepalive en cada reproducción
   startSilentKeepAlive();
 
-  const audioPath = `/sounds/${btn.sound}`;
+  // Obtener URL desde caché local en memoria/disco
+  const playableUrl = await getOrCacheAudioUrl(btn.sound);
   const effectiveVolume = masterVolume * (btn.volume || 1.0);
-  const audio = new Audio(audioPath);
+  const audio = new Audio(playableUrl);
   audio.volume = effectiveVolume;
   audio.preload = 'auto';
 
@@ -312,9 +365,7 @@ function playSound(btn, device) {
   });
 
   audio.play().catch(() => {
-    // Si el elemento HTML5 Audio encuentra alguna restricción de foco,
-    // usamos inmediatamente el motor Web Audio API como respaldo
-    playBufferWithWebAudio(audioPath, effectiveVolume);
+    playBufferWithWebAudio(playableUrl, effectiveVolume);
   });
 
   // Animación en la tarjeta de botón en la PC
@@ -408,6 +459,7 @@ socket.on('play_sound_on_pc', (data) => {
 socket.on('buttons_updated', (newButtons) => {
   buttons = newButtons;
   renderButtons();
+  precacheAllSounds(buttons);
 });
 
 // Modal Agregar / Editar Sonido

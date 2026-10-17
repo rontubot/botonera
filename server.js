@@ -17,53 +17,20 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// Configuración de Almacenamiento Persistente (Soporta Railway Volume)
-// Si existe /app/storage (volumen en Railway), /data o la variable STORAGE_PATH
-const STORAGE_ROOT = process.env.STORAGE_PATH || 
-                     (fs.existsSync('/app/storage') ? '/app/storage' : 
-                     (fs.existsSync('/data') ? '/data' : path.join(__dirname, 'storage')));
+// Carpeta fija de uploads en el repositorio para que los sonidos no se pierdan
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const SOUNDS_DIR = UPLOADS_DIR;
+const BUTTONS_FILE = path.join(__dirname, 'buttons.json');
 
-const SOUNDS_DIR = path.join(STORAGE_ROOT, 'sounds');
-const BUTTONS_FILE = path.join(STORAGE_ROOT, 'buttons.json');
-const INITIAL_SOUNDS_DIR = path.join(__dirname, 'public', 'sounds');
-const INITIAL_BUTTONS_FILE = path.join(__dirname, 'buttons.json');
-
-// Asegurar que existe el directorio de almacenamiento persistente
-if (!fs.existsSync(SOUNDS_DIR)) {
-  fs.mkdirSync(SOUNDS_DIR, { recursive: true });
+// Asegurar que existe la carpeta uploads
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-// Inicializar archivos si la carpeta de almacenamiento es nueva
-function initStorage() {
-  // 1. Si no existe el buttons.json persistente, copiar el base del repositorio
-  if (!fs.existsSync(BUTTONS_FILE) && fs.existsSync(INITIAL_BUTTONS_FILE)) {
-    try {
-      fs.copyFileSync(INITIAL_BUTTONS_FILE, BUTTONS_FILE);
-      console.log('[Storage] Inicializado buttons.json en almacenamiento persistente');
-    } catch (e) {
-      console.error('[Storage] Error al inicializar buttons.json:', e);
-    }
-  }
-
-  // 2. Copiar los sonidos que vienen en el repositorio hacia el almacenamiento si aún no existen
-  if (fs.existsSync(INITIAL_SOUNDS_DIR)) {
-    const defaultSounds = fs.readdirSync(INITIAL_SOUNDS_DIR);
-    defaultSounds.forEach(soundFile => {
-      const dest = path.join(SOUNDS_DIR, soundFile);
-      if (!fs.existsSync(dest)) {
-        try {
-          fs.copyFileSync(path.join(INITIAL_SOUNDS_DIR, soundFile), dest);
-        } catch (e) {}
-      }
-    });
-  }
-}
-initStorage();
-
-// Configuración de Multer para subir sonidos al almacenamiento persistente
+// Configuración de Multer para guardar en uploads/
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, SOUNDS_DIR);
+    cb(null, UPLOADS_DIR);
   },
   filename: (req, file, cb) => {
     const cleanName = Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -77,19 +44,16 @@ const upload = multer({
 
 // Middleware
 app.use(express.json());
-// Servir audios desde el almacenamiento persistente con fallback a public/sounds
-app.use('/sounds', express.static(SOUNDS_DIR));
-app.use('/sounds', express.static(INITIAL_SOUNDS_DIR));
+// Servir audios desde uploads/ y desde public/sounds/
+app.use('/sounds', express.static(UPLOADS_DIR));
+app.use('/sounds', express.static(path.join(__dirname, 'public', 'sounds')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Cargar botones (primero desde almacenamiento persistente, luego inicial)
+// Cargar botones
 function loadButtons() {
   try {
     if (fs.existsSync(BUTTONS_FILE)) {
       const data = fs.readFileSync(BUTTONS_FILE, 'utf8');
-      return JSON.parse(data);
-    } else if (fs.existsSync(INITIAL_BUTTONS_FILE)) {
-      const data = fs.readFileSync(INITIAL_BUTTONS_FILE, 'utf8');
       return JSON.parse(data);
     }
   } catch (err) {
@@ -98,7 +62,7 @@ function loadButtons() {
   return [];
 }
 
-// Guardar botones en almacenamiento persistente
+// Guardar botones
 function saveButtons(buttonsData) {
   try {
     fs.writeFileSync(BUTTONS_FILE, JSON.stringify(buttonsData, null, 2), 'utf8');
